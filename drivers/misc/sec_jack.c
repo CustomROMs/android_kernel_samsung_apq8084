@@ -165,6 +165,8 @@ static int sec_jack_get_adc_value(struct sec_jack_info *hi)
 	// Get voltage in microvolts
 	retVal = ((int)result.physical)/1000;
 
+	pr_err("%s: %d", __func__, retVal);
+
 	return retVal;
 }
 
@@ -296,13 +298,14 @@ static void sec_jack_set_type(struct sec_jack_info *hi, int jack_type)
 	}
 
 	hi->cur_jack_type = jack_type;
-	pr_info("%s : jack_type = %d\n", __func__, jack_type);
+	pr_err("%s : jack_type = %d\n", __func__, jack_type);
 
 	switch_set_state(&switch_jack_detection, jack_type);
 }
 
 static void handle_jack_not_inserted(struct sec_jack_info *hi)
 {
+	pr_err("%s\n", __func__);
 	sec_jack_set_type(hi, SEC_JACK_NO_DEVICE);
 	set_sec_micbias_state(hi, false);
 }
@@ -319,11 +322,12 @@ static void determine_jack_type(struct sec_jack_info *hi)
 
 	/* set mic bias to enable adc */
 	set_sec_micbias_state(hi, true);
+	pr_err("%s\n", __func__);
 
 
 	while (gpio_get_value(pdata->det_gpio) ^ npolarity) {
 		adc = sec_jack_get_adc_value(hi);
-		pr_info("%s: adc = %d\n", __func__, adc);
+		pr_err("%s: adc = %d\n", __func__, adc);
 
 		/* determine the type of headset based on the
 		 * adc value.  An adc value can fall in various
@@ -348,7 +352,7 @@ static void determine_jack_type(struct sec_jack_info *hi)
 	}
 
 	/* jack removed before detection complete */
-	pr_debug("%s : jack removed before detection complete\n", __func__);
+	pr_err("%s : jack removed before detection complete\n", __func__);
 	handle_jack_not_inserted(hi);
 }
 
@@ -415,7 +419,7 @@ void sec_jack_detect_work(struct work_struct *work)
 	/* prevent suspend to allow user space to respond to switch */
 	wake_lock_timeout(&hi->det_wake_lock, WAKE_LOCK_TIME);
 
-	pr_info("%s: detect_irq(%d)\n", __func__,
+	pr_err("%s: detect_irq(%d)\n", __func__,
 		gpio_get_value(pdata->det_gpio) ^ npolarity);
 
 	/* debounce headset jack.  don't try to determine the type of
@@ -447,7 +451,7 @@ void sec_jack_buttons_work(struct work_struct *work)
 	int i;
 
 	if (!hi->buttons_enable) {
-		pr_info("%s: BTN %d is skipped\n", __func__,
+		pr_err("%s: BTN %d is skipped\n", __func__,
 			hi->pressed_code);
 		return;
 	}
@@ -459,7 +463,7 @@ void sec_jack_buttons_work(struct work_struct *work)
 		input_report_key(hi->input_dev, hi->pressed_code, 0);
 		input_sync(hi->input_dev);
 		switch_set_state(&switch_sendend, 0);
-		pr_info("%s: BTN %d is released\n", __func__,
+		pr_err("%s: BTN %d is released\n", __func__,
 			hi->pressed_code);
 		return;
 	}
@@ -474,12 +478,12 @@ void sec_jack_buttons_work(struct work_struct *work)
 			input_report_key(hi->input_dev, btn_zones[i].code, 1);
 			input_sync(hi->input_dev);
 			switch_set_state(&switch_sendend, 1);
-			pr_info("%s: adc = %d, BTN %d is pressed\n", __func__,
+			pr_err("%s: adc = %d, BTN %d is pressed\n", __func__,
 				adc, btn_zones[i].code);
 			return;
 		}
 
-	pr_warn("%s: key is skipped. ADC value is %d\n", __func__, adc);
+	pr_err("%s: key is skipped. ADC value is %d\n", __func__, adc);
 }
 
 static struct sec_jack_platform_data *sec_jack_populate_dt_pdata(struct device *dev)
@@ -498,13 +502,13 @@ static struct sec_jack_platform_data *sec_jack_populate_dt_pdata(struct device *
 	if (pdata->det_gpio < 0) {
 		pr_err("%s : can not find the earjack-detect-gpio in the dt\n", __func__);
 	} else
-		pr_info("%s : earjack-detect-gpio =%d\n", __func__, pdata->det_gpio);
+		pr_err("%s : earjack-detect-gpio =%d\n", __func__, pdata->det_gpio);
 
 	pdata->send_end_gpio = of_get_named_gpio(dev->of_node, "qcom,earjack-sendend-gpio", 0);
 	if (pdata->send_end_gpio < 0) {
 		pr_err("%s : can not find the earjack-detect-gpio in the dt\n", __func__);
 	} else
-		pr_info("%s : earjack-sendend-gpio =%d\n", __func__, pdata->send_end_gpio);
+		pr_err("%s : earjack-sendend-gpio =%d\n", __func__, pdata->send_end_gpio);
 
 	pdata->ear_micbias_gpio = of_get_named_gpio(dev->of_node, "qcom,earjack-micbias-gpio", 0);
 	if (pdata->ear_micbias_gpio < 0)
@@ -512,15 +516,15 @@ static struct sec_jack_platform_data *sec_jack_populate_dt_pdata(struct device *
 	if (pdata->ear_micbias_gpio < 0) {
 		pr_err("%s : can not find the earjack-micbias-gpio in the dt\n", __func__);
 	} else
-		pr_info("%s : earjack-micbias-gpio =%d\n", __func__, pdata->ear_micbias_gpio);	
+		pr_err("%s : earjack-micbias-gpio =%d\n", __func__, pdata->ear_micbias_gpio);	
 			
 	pdata->fsa_en_gpio = of_get_named_gpio(dev->of_node, "qcom,earjack-fsa_en-gpio", 0);
 	if (pdata->fsa_en_gpio < 0) 
 		of_property_read_u32(dev->of_node, "qcom,earjack-fsa_en-expander-gpio", &pdata->fsa_en_gpio);
 	if (pdata->fsa_en_gpio < 0)
-		pr_info("%s : No support FSA8038 chip\n", __func__);
+		pr_err("%s : No support FSA8038 chip\n", __func__);
 	else
-		pr_info("%s : earjack-fsa_en-gpio =%d\n", __func__, pdata->fsa_en_gpio);
+		pr_err("%s : earjack-fsa_en-gpio =%d\n", __func__, pdata->fsa_en_gpio);
 	
 	for( i=0; i<4; i++)
 	{
@@ -530,7 +534,7 @@ static struct sec_jack_platform_data *sec_jack_populate_dt_pdata(struct device *
 		pdata->jack_zones[i].check_count = args.args[2];
 		pdata->jack_zones[i].jack_type = args.args[3]==0?SEC_HEADSET_3POLE:SEC_HEADSET_4POLE;
 
-		pr_info("%s : %d, %d, %d, %d, %d \n",
+		pr_err("%s : %d, %d, %d, %d, %d \n",
 				__func__, args.args_count, args.args[0],
 				args.args[1], args.args[2],args.args[3]);		
 	}
@@ -540,7 +544,7 @@ static struct sec_jack_platform_data *sec_jack_populate_dt_pdata(struct device *
 		pdata->jack_buttons_zones[i].code = args.args[0]==0?KEY_MEDIA:args.args[0]==1?KEY_VOLUMEUP:KEY_VOLUMEDOWN;
 		pdata->jack_buttons_zones[i].adc_low = args.args[1];
 		pdata->jack_buttons_zones[i].adc_high = args.args[2];
-		pr_info("%s : %d, %d, %d, %d\n",
+		pr_err("%s : %d, %d, %d, %d\n",
 				__func__, args.args_count, args.args[0],
 				args.args[1], args.args[2]);
 	}
@@ -556,7 +560,7 @@ static struct sec_jack_platform_data *sec_jack_populate_dt_pdata(struct device *
 		pdata->mpp_ch_scale[1] = 1;
 		pdata->mpp_ch_scale[2] = 3;
 	}
-	pr_info("%s - mpp-channel-scaling - %d %d %d\n", __func__, pdata->mpp_ch_scale[0], pdata->mpp_ch_scale[1], pdata->mpp_ch_scale[2]);
+	pr_err("%s - mpp-channel-scaling - %d %d %d\n", __func__, pdata->mpp_ch_scale[0], pdata->mpp_ch_scale[1], pdata->mpp_ch_scale[2]);
 
 	return pdata;
 
@@ -580,7 +584,7 @@ static int sec_jack_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 #endif	
-	pr_info("%s : Registering jack driver\n", __func__);
+	pr_err("%s : Registering jack driver\n", __func__);
 
 	pdata = sec_jack_populate_dt_pdata(&pdev->dev);
 	if (!pdata) {
@@ -741,7 +745,7 @@ static int sec_jack_remove(struct platform_device *pdev)
 {
 
 	struct sec_jack_info *hi = dev_get_drvdata(&pdev->dev);
-	pr_info("%s :\n", __func__);
+	pr_err("%s :\n", __func__);
 	disable_irq_wake(hi->det_irq);
 	free_irq(hi->det_irq, hi);
 	destroy_workqueue(hi->queue);
